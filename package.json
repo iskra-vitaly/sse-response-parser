@@ -13,9 +13,13 @@
   "private": false,
   "type": "module",
   "devDependencies": {
+    "@types/jest": "^26.0.5",
+    "jest": "^26.1.0",
+    "ts-jest": "^26.1.3",
     "typescript": "^3.9.7"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "jest"
   }
 }
