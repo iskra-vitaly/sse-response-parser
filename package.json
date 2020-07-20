@@ -1,0 +1,21 @@
+{
+  "name": "sse-response-parser",
+  "version": "1.0.0",
+  "description": "Parse text/event-stream response from fetch api",
+  "main": "dist/SSEResponseParser.js",
+  "types": "dist/SSEResponseParser.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iskra-vitaly/sse-response-parser.git"
+  },
+  "author": "Vitaly Iskra",
+  "license": "LGPL-2.1",
+  "private": false,
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^3.9.7"
+  },
+  "scripts": {
+    "build": "tsc"
+  }
+}
