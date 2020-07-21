@@ -16,8 +16,8 @@ async function logAllSseMessages(uri) {
     // Store a function able to close a connection from the browser
     closeConnection = () => parser.close();
     // Iterate messages until SSE connection is closed by either server or the client 
-    for (const message of parser) {
-        console.log(`Got message ${message.data}`, message);
+    for await (const event of parser) {
+        console.log(`Got message. Data: ${event.data}; Event: ${event.event}`, event);
     }
 }
 

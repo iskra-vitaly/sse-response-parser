@@ -7,6 +7,10 @@
     "dist"
   ],
   "compilerOptions": {
+    "lib": [
+      "dom",
+      "ESNext"
+    ],
     "types": [
       "jest"
     ],
