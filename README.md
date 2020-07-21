@@ -3,9 +3,10 @@
 This library allows to parse a sse response (`Content-Type: text/event-stream`)
 as an async iterable of messages.
 
-lib/SSEResponseParser.ts – source code
-dist/SSEResponseParser.js – compiled typescript
-dist/SSEResponseParser.d.ts – type definitions
+## Files
+* lib/SSEResponseParser.ts – source code
+* dist/SSEResponseParser.js – compiled typescript
+* dist/SSEResponseParser.d.ts – type definitions
 
 ## Usage
 
