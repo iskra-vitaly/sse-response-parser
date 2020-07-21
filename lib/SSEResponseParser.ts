@@ -83,10 +83,15 @@ export default class SSEResponseParser {
         this.reader = reader;
     }
 
-    async close() {
+    async close(): Promise<SSEParseResult> {
         if (this.finishedWith === null) {
             this.clientClosed = true;
             await this.reader.cancel('Client closed the connection');
+        }
+        if (this.finishedWith === null) {
+            return {reason: FinishReason.CLIENT_CLOSED};
+        } else {
+            return this.finishedWith;
         }
     }
 

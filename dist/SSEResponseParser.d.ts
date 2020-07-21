@@ -30,8 +30,13 @@ export default class SSEResponseParser {
     private readonly reader;
     private clientClosed;
     private finishedWith;
+
     constructor(reader: ReaderLike);
-    close(): Promise<void>;
+
+    close(): Promise<SSEParseResult>;
+
+    [Symbol.asyncIterator](): AsyncGenerator<Message, SSEParseResult>;
+
     getMessages(): AsyncGenerator<Message, SSEParseResult>;
 }
 export {};

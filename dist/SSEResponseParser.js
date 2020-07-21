@@ -27,6 +27,15 @@ export default class SSEResponseParser {
             this.clientClosed = true;
             await this.reader.cancel('Client closed the connection');
         }
+        if (this.finishedWith === null) {
+            return {reason: FinishReason.CLIENT_CLOSED};
+        } else {
+            return this.finishedWith;
+        }
+    }
+
+    [Symbol.asyncIterator]() {
+        return this.getMessages();
     }
 
     async* getMessages() {
@@ -103,39 +112,16 @@ function* fieldStart(ctx) {
     }
 }
 function* fieldName(ctx) {
-    let {chunk, pos} = yield {};
-    let fieldName = '';
-    let nameEndChar = 0;
-    // Request new chunks until fieldName ending character encountered
-    while (nameEndChar === 0) {
-        const remainingChunk = chunk.subarray(pos);
-        const nameEndIndex = remainingChunk.findIndex(notNameChar);
-        let nameChunk = null;
-        if (nameEndIndex >= 0) {
-            nameChunk = remainingChunk.subarray(0, nameEndIndex);
-            nameEndChar = remainingChunk[nameEndIndex];
-            pos += nameEndIndex;
-        } else {
-            // Need more chunks to read the name
-            const nextChunk = yield {pos: chunk.byteLength};
-            chunk = nextChunk.chunk;
-            pos = nextChunk.pos;
-            nameChunk = remainingChunk;
-        }
-        fieldName += ctx.decoder.decode(nameChunk, {stream: true});
-    }
-    pos++; // Skip the name ending character
-    // Flush the decoder
-    fieldName += ctx.decoder.decode();
-    ctx.decoder = new TextDecoder();
+    const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, notNameChar, false);
+    const fieldName = buffer;
     // Field name without field value is a special case according to the spec
-    if (nameEndChar === LF || nameEndChar === CR) {
+    if (endingChar === LF || endingChar === CR) {
         /*
           according to spec here https://html.spec.whatwg.org/multipage/server-sent-events.html#parsing-an-event-stream
           the value of the feild with the name ending with a line-end should be considered empty string
          */
         ctx.message[fieldName] = '';
-        return {pos, nextState: skipLFAfterCR(nameEndChar, fieldStart)};
+        return {pos, nextState: skipLFAfterCR(endingChar, fieldStart)};
     } else {
         // Got field name followed by a colon. Now parse the field value.
         return {pos, nextState: fieldValue(fieldName)};
@@ -143,41 +129,15 @@ function* fieldName(ctx) {
 }
 function fieldValue(fieldName) {
     return function* (ctx) {
-        let {chunk, pos} = yield {};
-        let fieldValue = '';
-        let valueEndChar = 0;
-        // Request new chunks until line-end character encountered
-        while (valueEndChar === 0) {
-            const remainingChunk = chunk.subarray(pos);
-            const valueEndIndex = remainingChunk.findIndex(lineEndChar);
-            let valueChunk = null;
-            if (valueEndIndex >= 0) {
-                valueChunk = remainingChunk.subarray(0, valueEndIndex);
-                valueEndChar = remainingChunk[valueEndIndex];
-                pos += valueEndIndex;
-            } else {
-                // Need more chunks to read the value
-                const nextChunk = yield {pos: chunk.byteLength};
-                chunk = nextChunk.chunk;
-                pos = nextChunk.pos;
-                valueChunk = remainingChunk;
-            }
-            // Skip leading space
-            if (fieldValue === '' && valueChunk.byteLength > 0 && valueChunk[0] === SPACE) {
-                valueChunk = valueChunk.subarray(1);
-            }
-            fieldValue += ctx.decoder.decode(valueChunk, {stream: true});
-        }
-        pos++; // Skip the line-end character
-        // Flush the decoder
-        fieldValue += ctx.decoder.decode();
-        ctx.decoder = new TextDecoder();
+        const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, notNameChar, true);
+        let fieldValue = buffer;
+        // Several data values should be concatenated according to a spec
         if (fieldName === 'data') {
             const previous = ctx.message[fieldName] || '';
             fieldValue = previous + fieldValue + '\n';
         }
         ctx.message[fieldName] = fieldValue;
-        return {pos, nextState: skipLFAfterCR(valueEndChar, fieldStart)};
+        return {pos, nextState: skipLFAfterCR(endingChar, fieldStart)};
     };
 }
 function skipLFAfterCR(char, nextState) {
@@ -195,7 +155,6 @@ function skipLFAfterCR(char, nextState) {
         return {pos, nextState};
     };
 }
-
 function* skipComment() {
     // Only line end can end the comment
     let {chunk, pos} = yield {};
@@ -211,4 +170,38 @@ function* skipComment() {
         chunk = nextChunk.chunk;
         pos = nextChunk.pos;
     }
+}
+
+function* collectUntilChar(ctx, predicate, skipLeadingSpace) {
+    let {chunk, pos} = yield {};
+    let buffer = '';
+    let endingChar = 0;
+    // Request new chunks until character of interest is encountered
+    while (endingChar === 0) {
+        const remainingChunk = chunk.subarray(pos);
+        const endingIndex = remainingChunk.findIndex(predicate);
+        let bytesToAdd = null;
+        if (endingIndex >= 0) {
+            bytesToAdd = remainingChunk.subarray(0, endingIndex);
+            endingChar = remainingChunk[endingIndex];
+            pos += endingIndex;
+        } else {
+            // Need more chunks to read the value
+            const nextChunk = yield {pos: chunk.byteLength};
+            chunk = nextChunk.chunk;
+            pos = nextChunk.pos;
+            bytesToAdd = remainingChunk;
+        }
+        if (skipLeadingSpace) {
+            if (buffer === '' && bytesToAdd.byteLength > 0 && bytesToAdd[0] === SPACE) {
+                bytesToAdd = bytesToAdd.subarray(1);
+            }
+        }
+        buffer += ctx.decoder.decode(bytesToAdd, {stream: true});
+    }
+    pos++; // Skip the ending character
+    // Flush the decoder
+    buffer += ctx.decoder.decode();
+    ctx.decoder = new TextDecoder();
+    return {endingChar, buffer, pos};
 }
