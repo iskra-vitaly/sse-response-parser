@@ -135,6 +135,18 @@ it("should be able to iterate over messages", async function () {
     await response.close();
 });
 
+it("should work with json data", async function () {
+    const obj = {x: 42, y: "hello", z: [1, 2, 3]};
+    const json = JSON.stringify(obj);
+    const response = mockReader();
+    const parser = new SSEResponseParser(response.reader);
+    await response.push(`data:${json}\n\n`);
+    const messages = parser.getMessages();
+    await checkNextMessage(messages, {data: json + '\n'});
+    await response.push(`data:${json}\n\n`);
+    await checkNextMessage(messages, {data: json + '\n'});
+});
+
 async function checkNextMessage(messages: AsyncGenerator<Message, SSEParseResult>, template: object) {
     const {done, value} = await messages.next();
     expect(done).toBe(false);

@@ -21,7 +21,6 @@ export default class SSEResponseParser {
         this.finishedWith = null;
         this.reader = reader;
     }
-
     async close() {
         if (this.finishedWith === null) {
             this.clientClosed = true;
@@ -129,7 +128,7 @@ function* fieldName(ctx) {
 }
 function fieldValue(fieldName) {
     return function* (ctx) {
-        const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, notNameChar, true);
+        const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, lineEndChar, true);
         let fieldValue = buffer;
         // Several data values should be concatenated according to a spec
         if (fieldName === 'data') {
@@ -171,7 +170,6 @@ function* skipComment() {
         pos = nextChunk.pos;
     }
 }
-
 function* collectUntilChar(ctx, predicate, skipLeadingSpace) {
     let {chunk, pos} = yield {};
     let buffer = '';

@@ -195,7 +195,7 @@ function* fieldName(ctx: ParserCtx): ParserStateResult {
 
 function fieldValue(fieldName: string): ParserState {
     return function* (ctx: ParserCtx): ParserStateResult {
-        const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, notNameChar, true);
+        const {endingChar, buffer, pos} = yield* collectUntilChar(ctx, lineEndChar, true);
         let fieldValue = buffer;
         // Several data values should be concatenated according to a spec
         if (fieldName === 'data') {
